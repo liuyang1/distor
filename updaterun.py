@@ -7,6 +7,10 @@ import os.path
 import subprocess
 import shlex
 
+import logger
+
+log = logger.get()
+
 
 def download(filename, url):
     """
@@ -21,10 +25,10 @@ def download(filename, url):
         localfile.write(f.read())
         localfile.close()
     except urllib2.HTTPError, e:
-        print "HTTP Error: ", e.code, url
+        log.error("HTTP Error: %d %s" % (e.code, url))
         return False
     except urllib2.URLError, e:
-        print "URL Error: ", e.reason, url
+        log.error("URL Error: %s %s" % (e.reason, url))
         return False
     return True
 
@@ -50,11 +54,10 @@ def DownCheck(url, chksuffix=".md5"):
     md5url = url + chksuffix
     if download(filename, url) and download(md5file, md5url):
         if not CheckMd5(filename, md5file):
-            print "md5check failed", filename, md5file
+            log.error("md5check failed %s %s" % (filename, md5file))
             return False
         return True
     else:
-        print "download ", url, md5url, " faild"
         return False
 
 
@@ -88,18 +91,22 @@ def CheckLocalNewest(pathname, filePrefix, fileType):
 def replacePID(pid, cmd):
     if pid != 0:
         pid.kill()
-    print cmd
+    log.info("run %s" % (cmd))
     cmd = shlex.split(cmd)
     return subprocess.Popen(cmd)
 
 
 def runit(urlPrefix, local, filePrefix, fileType):
+    log.info("---- start ----")
+    log.info("urlPrefix %s" % (urlPrefix))
+    log.info("localpath %s" % (local))
+    log.info("filePrefix %s fileType %s" % (filePrefix, fileType))
     pid = 0
     while 1:
         netnew = CheckNewestName(urlPrefix, filePrefix, fileType)
         locnew = CheckLocalNewest(local, filePrefix, fileType)
         if netnew > locnew and DownCheck(urlPrefix + netnew):
-            print "update to ", netnew
+            log.info("update to %s" % (netnew))
             locnew = netnew
             cmd = "python " + locnew
             pid = replacePID(pid, cmd)
